@@ -1,12 +1,18 @@
 import argparse
 from urllib.request import urlopen
+import csv
 
 
 def main(url):
 
-    with urlopen(url) as x:
-        print(x.read().decode("utf-8"))
+    with urlopen(url) as csv_file:
+        # csv_list = [i.decode("utf-8") for i in csv_file]
 
+        # for line in csv_list:
+        #     print(type(line), line)
+
+        csv_reader = csv.reader(csv_file)
+        
 
 
 
