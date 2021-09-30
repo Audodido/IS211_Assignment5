@@ -2,12 +2,16 @@ import argparse
 from urllib.request import proxy_bypass, urlopen
 import csv
 import re
+import time
 
 
 class Queue():
     
     def __init__(self):
         self.items = []
+
+    def items(self):
+        return self.items
 
     def is_empty(self):
         return self.items == []
@@ -16,21 +20,20 @@ class Queue():
         self.items.insert(0, item)
 
     def dequeue(self):
-        self.items.pop()
+        return self.items.pop()
 
     def size(self):
-        return len(self.self.items)
+        return len(self.items)
 
 
 class Server():
     
-    def __init__(self, spr):
+    def __init__(self):
         """intialize an instance"""
 
-        self.processing_rate = spr
+        # self.processing_rate = spr
         self.current_request = None
         self.time_remaining = 0 #internal timer
-
 
     def tick(self):
         """Decrements the internal timer sets the printer to idle when task completed"""
@@ -40,44 +43,73 @@ class Server():
             if self.time_remaining <= 0:
                 self.current_request = None
 
-
     def busy(self):
         if self.current_request != None:
             return True
         else:
             return False
 
-
     def start_next(self, new_request):
         self.current_request = new_request
-        self.time_remaining = new_request[2] #new_request[2] is the time it will take to complete request (column 3 in the csv)
+        self.time_remaining = new_request.get_processing_time() 
 
 
 class Request():
     """represents a single server request"""
 
-    def __init__(self, time, file_request):
-        self.timestamp = time # used for computing wait time — time request was created/place in queue
-        self.file_request = file_request # row[1] from csv_reader
+    def __init__(self, time, processing_time):
+        self.timestamp = time # used for computing wait time —- time request was created/place in queue
+        self.processing_time = processing_time # row[2] from csv_reader
 
     def get_stamp(self):
         return self.timestamp
 
-    def get_file_request(self):
-        return self.file_request
+    def get_processing_time(self):
+        return self.processing_time
 
     def wait_time(self, current_time):
         return current_time - self.timestamp #amt of time spent in queue before request was processed
 
 
-def simulation(num_seconds, requests_per_minute): ##defining terms of the sim
+
+def simulateOneServer(file): 
+ 
+    with urlopen(file) as csv_file:
+        csv_list = [i.decode("utf-8") for i in csv_file] #decode csv and store each row as a string in a big list
+        csv_reader = csv.reader(csv_list, delimiter=',') #take each row (single string) and and break each string into separate elements of a smaller list
+        data = [[int(row[0]), row[1], int(row[2])] for row in csv_reader] #converts row[0] and row[2] from csv to ints
+        #test datatype conversion:
+        # for d in data:
+        #     print(d)
+
+        web_server = Server()
+        request_queue = Queue()
+        waiting_times = [] 
+
+        for current_second in data:
+            request = Request(current_second[0], current_second[2])
+            request_queue.enqueue(request)
+            #print(request.get_stamp()) 
+            # for c in current_second:
+            #     print(type(c))
+            #print(request_queue.size(), current_second)
+
+
+            if (not web_server.busy()) and (not request_queue.is_empty()):
+                next_request = request_queue.dequeue()
+                # print(next_request)
+                waiting_times.append(next_request.wait_time(current_second[0])) ## should this index be 0 or 2?
+                #print(current_second[0], request.get_stamp())
+                web_server.start_next(next_request)
+            
+            web_server.tick()
+        
+        average_wait = sum(waiting_times) / len(waiting_times)
+        print("Average wait %6.2f secs" % average_wait)
+        # for w in waiting_times:
+        #     print(w)
+
     
-    web_server = Server(requests_per_minute):
-    request_queue = Queue()
-    waiting_times = []
-
-    for current_second in range(num_seconds)
-
 
 
 if __name__ == "__main__":
@@ -86,25 +118,12 @@ if __name__ == "__main__":
     parser.add_argument("--file", help="URL to the datafile", type=str, required=True)
     args = parser.parse_args()
 
-def main(url):
-    """open file from url and store contents"""
-    with urlopen(url) as csv_file:
-        csv_list = [i.decode("utf-8") for i in csv_file] #decode csv and store each row as a string in a big list
-        csv_reader = csv.reader(csv_list, delimiter=',') #take each row (single string) and and break each string into separate elements of a smaller list
-        
-        # # temporary: just for checking to see whats working:
-        # for line in csv_reader: 
-        #     print(f'Second in simulation request occurred: {line[0]}')
-        #     print(f'File request: {line[1]}')
-        #     print(f'Time per task: {line[2]}')
+    # def main(file):
+    #     simulateOneServer(file) 
 
-        #instantiating a request object for each line in the list
-        for line in csv_reader:
-            r = Request(line[2], line[1])
-            print(f'Second in simulation request occurred: {r.get_stamp()}')
-            print(f'File request: {r.get_file_request()}')
-            print(f'Time for task: {r.get_stamp()}')
+    # simulateOneServer(args.file) 
+    # main(args.file)
+    file = args.file
+    simulateOneServer(file)
 
-
-main(args.file) 
 
