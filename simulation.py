@@ -36,10 +36,10 @@ class Server():
         self.time_remaining = 0 #internal timer
 
     def tick(self):
-        """Decrements the internal timer sets the printer to idle when task completed"""
+        """Decrements the internal timer sets the server to idle when task completed"""
 
         if self.current_request != None:
-            self.time_remaining -= 1 #time remaining in the simulation
+            self.time_remaining = self.time_remaining - 1 
             if self.time_remaining <= 0:
                 self.current_request = None
 
@@ -47,6 +47,7 @@ class Server():
         if self.current_request != None:
             return True
         else:
+            #print("BUSY!!!") ### IF BUSY GO TO DIFF, NON-BUSY SERVER???
             return False
 
     def start_next(self, new_request):
@@ -68,46 +69,56 @@ class Request():
         return self.processing_time
 
     def wait_time(self, current_time):
-        return current_time - self.timestamp #amt of time spent in queue before request was processed
-
+        if current_time - self.timestamp <= 0:
+            #print(self.processing_time)
+            return self.processing_time
+        else:
+            return current_time - self.timestamp #amt of time spent in queue before request was processed
+            #print(current_time - self.timestamp)
 
 
 def simulateOneServer(file): 
+
+    web_server = Server()
+    request_queue = Queue()
+    waiting_times = [] 
+
  
-    with urlopen(file) as csv_file:
-        csv_list = [i.decode("utf-8") for i in csv_file] #decode csv and store each row as a string in a big list
-        csv_reader = csv.reader(csv_list, delimiter=',') #take each row (single string) and and break each string into separate elements of a smaller list
-        data = [[int(row[0]), row[1], int(row[2])] for row in csv_reader] #converts row[0] and row[2] from csv to ints
-        #test datatype conversion:
-        # for d in data:
-        #     print(d)
-
-        web_server = Server()
-        request_queue = Queue()
-        waiting_times = [] 
-
-        for current_second in data:
-            request = Request(current_second[0], current_second[2])
-            request_queue.enqueue(request)
-            #print(request.get_stamp()) 
-            # for c in current_second:
-            #     print(type(c))
-            #print(request_queue.size(), current_second)
+    csv_file = urlopen(file)
+    csv_list = [i.decode("utf-8") for i in csv_file] #decode csv and store each row as a string in a big list
+    csv_reader = csv.reader(csv_list, delimiter=',') #take each row (single string) and and break each string into separate elements of a smaller list
+    requests = [[int(row[0]), row[1], int(row[2])] for row in csv_reader] #converts row[0] and row[2] from csv to ints
+    
+    # print(requests[2][1])
+    #loads up the queue
+    # for r in requests:
+    #     print(r)           
+        # request = Request(r[0], r[2])
+        # request_queue.enqueue(request)
+    
+    #current_request = request_queue.dequeue() #assigns first request from queue to current_request var
 
 
-            if (not web_server.busy()) and (not request_queue.is_empty()):
-                next_request = request_queue.dequeue()
-                # print(next_request)
-                waiting_times.append(next_request.wait_time(current_second[0])) ## should this index be 0 or 2?
-                #print(current_second[0], request.get_stamp())
-                web_server.start_next(next_request)
-            
-            web_server.tick()
+    for current_second in range(len(requests)):
         
-        average_wait = sum(waiting_times) / len(waiting_times)
-        print("Average wait %6.2f secs" % average_wait)
-        # for w in waiting_times:
-        #     print(w)
+        request = Request(requests[current_second][0], requests[current_second][2])
+        request_queue.enqueue(request)
+        #print(current_second, requests[current_second][0], requests[current_second][2])        
+        #print(requests[current_second][0] - current_second)
+        # current_request = request_queue.dequeue() #assigns first request from queue to current_request var
+        
+        if (not web_server.busy()) and (not request_queue.is_empty()):
+            next_request = request_queue.dequeue()
+            waiting_times.append(next_request.wait_time(current_second)) 
+            web_server.start_next(next_request)
+            current_request = next_request
+        
+        web_server.tick()
+    
+    average_wait = sum(waiting_times) / len(waiting_times)
+    print("Average wait %1.1f secs" % average_wait)
+    # for w in waiting_times:
+    #     print(w)
 
     
 
