@@ -1,5 +1,5 @@
 import argparse
-from urllib.request import proxy_bypass, urlopen
+from urllib.request import urlopen
 import csv
 import re
 import time
@@ -111,12 +111,13 @@ def simulateOneServer(file):
             next_request = request_queue.dequeue()
             waiting_times.append(next_request.wait_time(current_second)) 
             web_server.start_next(next_request)
-            current_request = next_request
+            #current_request = next_request
         
         web_server.tick()
     
     average_wait = sum(waiting_times) / len(waiting_times)
-    print("Average wait %1.1f secs" % average_wait)
+    print("Average wait %1.1f secs. %i requests remaining." % (average_wait, request_queue.size()))
+    #print(request_queue.size())
     # for w in waiting_times:
     #     print(w)
 
@@ -129,11 +130,6 @@ if __name__ == "__main__":
     parser.add_argument("--file", help="URL to the datafile", type=str, required=True)
     args = parser.parse_args()
 
-    # def main(file):
-    #     simulateOneServer(file) 
-
-    # simulateOneServer(args.file) 
-    # main(args.file)
     file = args.file
     simulateOneServer(file)
 
